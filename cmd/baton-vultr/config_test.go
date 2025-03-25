@@ -1,10 +1,9 @@
 package main
 
 import (
-	"testing"
-
 	"github.com/conductorone/baton-sdk/pkg/field"
 	"github.com/conductorone/baton-sdk/pkg/test"
+	"testing"
 )
 
 func TestConfigs(t *testing.T) {

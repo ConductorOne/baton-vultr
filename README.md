@@ -2,9 +2,38 @@
 
 # `baton-vultr` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-vultr.svg)](https://pkg.go.dev/github.com/conductorone/baton-vultr) ![main ci](https://github.com/conductorone/baton-vultr/actions/workflows/main.yaml/badge.svg)
 
-`baton-vultr` is a connector for built using the [Baton SDK](https://github.com/conductorone/baton-sdk).
+`baton-vultr` is a connector for [Vultr](https://www.vultr.com/) built using the [Baton SDK](https://github.com/conductorone/baton-sdk).
 
 Check out [Baton](https://github.com/conductorone/baton) to learn more the project in general.
+
+## Prerequisites
+
+1. **Create a Vultr account**: If you don't have a **Vultr** account yet, you can register at [Vultr](https://www.vultr.com/).
+
+2. **Get the Vultr API Key**:
+    - Log in to your **Vultr** account.
+    - Navigate to the **API** section from the control panel.
+    - There you will be able to generate an **API Key** that will be used to authenticate Vultr API requests.
+
+3. **Configure the API Key**:
+    - You must provide your Vultr **API Key** through an environment variable or by passing it directly as a parameter when running tests.
+    - You can set the `bearerToken` environment variable in your terminal with the following command:
+
+      ````bash
+      export bearerToken="your_api_key_here”
+      ```
+      **Note:** If you are using a development environment such as IntelliJ, you can also set this environment variable within the project run configuration.
+
+## Connector capabilities
+
+1. This connector synchronizes the resources users and ACLs.
+
+2. This connector does not provision
+
+## Connector credentials
+
+1. This connector requires an API key that must be obtained when configuring the api on the vultr page [Vultr](https://www.vultr.com/).
+   The main account from the api tab will be able to request the activation of the api and its API key.
 
 # Getting Started
 
