@@ -1,11 +1,11 @@
 package test
 
 import (
-	"github.com/conductorone/baton-sdk/pkg/uhttp"
-	"github.com/conductorone/baton-vultr/pkg/client"
-	"log"
 	"net/http"
 	"os"
+
+	"github.com/conductorone/baton-sdk/pkg/uhttp"
+	"github.com/conductorone/baton-vultr/pkg/client"
 )
 
 var (
@@ -110,11 +110,11 @@ func NewTestClient(response *http.Response, err error) *client.VultrClient {
 	return newClientT
 }
 
-func ReadFile(fileName string) string {
+func ReadFile(fileName string) (string, error) {
 	data, err := os.ReadFile("../../test/mockResponses/" + fileName)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
-	return string(data)
+	return string(data), nil
 }

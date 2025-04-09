@@ -7,7 +7,7 @@ import (
 
 var (
 	bearerTokenField = field.StringField(
-		"bearerToken",
+		"bearer-token",
 		field.WithDescription("Bearer Token for authentication"),
 		field.WithRequired(true),
 	)
@@ -29,6 +29,6 @@ var (
 // error if it isn't valid. Implementing this function is optional, it only
 // needs to perform extra validations that cannot be encoded with configuration
 // parameters.
-func ValidateConfig(v *viper.Viper) error {
+func ValidateConfig(_ *viper.Viper) error {
 	return nil
 }

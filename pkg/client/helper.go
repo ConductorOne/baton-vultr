@@ -2,70 +2,45 @@ package client
 
 import (
 	"context"
-	"golang.org/x/oauth2"
-	"log"
 	"net/url"
 	"strconv"
+
+	"golang.org/x/oauth2"
 )
 
-const ItemsPerPage = 5
+const ItemsPerPage = 50
 
 type PageOptions struct {
-	PageSize  int
-	PageToken string
+	Next     string
+	PageSize int
 }
 
-func getTokenSource(ctx context.Context, bearerToken string) oauth2.TokenSource {
+func getTokenSource(_ context.Context, bearerToken string) oauth2.TokenSource {
 	return oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: bearerToken,
 		TokenType:   "Bearer",
 	})
 }
 
-func getPageSize(pageSize int) int {
-	if pageSize <= 0 || pageSize > ItemsPerPage {
-		pageSize = ItemsPerPage
-	}
-	return pageSize
-}
-
-func getNextPageToken(prevPageToken string, pageSize, totalRecords, recordsCount int) string {
-	if prevPageToken == "" {
-		return "0"
-	}
-
-	prevToken, err := strconv.Atoi(prevPageToken)
-	if err != nil {
-		log.Printf("Error al convertir prevPageToken a entero: %v", err)
-		return ""
-	}
-
-	pageSize = getPageSize(pageSize)
-
-	if recordsCount < pageSize || prevToken+pageSize >= totalRecords {
-		return "" // No more pages
-	}
-
-	nextToken := strconv.Itoa(prevToken + pageSize)
-	return nextToken
-}
-
 func WithPageLimit(pageSize int) ReqOpt {
-	return WithQueryParam("limit", strconv.Itoa(getPageSize(pageSize)))
+	if pageSize != 0 {
+		return WithQueryParam("per_page", strconv.Itoa(pageSize))
+	}
+	pageSize = ItemsPerPage
+	return WithQueryParam("per_page", strconv.Itoa(pageSize))
 }
 
-func WithPageIndex(nextPageToken string) ReqOpt {
-	if nextPageToken == "" {
-		nextPageToken = "0"
-	}
-	return WithQueryParam("sIndex", nextPageToken)
+func WithPageCursor(nextPageToken string) ReqOpt {
+	return WithQueryParam("cursor", nextPageToken)
 }
 
 func WithQueryParam(key string, value string) ReqOpt {
 	return func(reqURL *url.URL) {
-		q := reqURL.Query()
-		q.Set(key, value)
-		reqURL.RawQuery = q.Encode()
+		if value != "" {
+			q := reqURL.Query()
+			q.Set(key, value)
+			reqURL.RawQuery = q.Encode()
+		}
 	}
 }
 

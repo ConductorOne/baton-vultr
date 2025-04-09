@@ -9,7 +9,15 @@ type User struct {
 }
 
 type UserResponse struct {
-	Result []User `json:"users"`
+	Meta   *PaginationMeta `json:"meta"`
+	Result []User          `json:"users"`
+}
+type PaginationMeta struct {
+	Total int `json:"total"`
+	Links struct {
+		Next string `json:"next"`
+		Prev string `json:"prev"`
+	} `json:"links"`
 }
 
 type UserSingleResponse struct {

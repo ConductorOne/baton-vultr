@@ -3,19 +3,20 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/ratelimit"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"golang.org/x/oauth2"
-	"net/http"
-	"net/url"
 )
 
 const (
 	baseUrl             = "https://api.vultr.com/v2"
 	getUsers            = "/users"
-	getUserByID         = "/users/"
+	getUserByID         = "/users/%s"
 	getAccountPrincipal = "/account"
 )
 
@@ -26,9 +27,12 @@ type VultrClient struct {
 
 func New(ctx context.Context, bearerToken string) (*VultrClient, error) {
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
+	}
 	cli, err := uhttp.NewBaseHttpClientWithContext(context.Background(), httpClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create base HTTP client: %w", err)
 	}
 	client := VultrClient{
 		wrapper:     cli,
@@ -60,28 +64,13 @@ func (c *VultrClient) ListUsers(ctx context.Context, options PageOptions) ([]Use
 		return nil, "", nil, err
 	}
 
-	annotation, err = c.getResourcesFromAPI(ctx, queryUrl, &res, WithPageIndex(options.PageToken), WithPageLimit(options.PageSize))
+	annotation, err = c.getResourcesFromAPI(ctx, queryUrl, &res, WithPageCursor(options.Next), WithPageLimit(options.PageSize))
 	if err != nil {
 		l.Error(fmt.Sprintf("Error getting resources: %s", err))
 		return nil, "", nil, err
 	}
 
-	result := res.Result
-	if result != nil {
-		var users []User
-		for _, user := range result {
-			users = append(users, user)
-		}
-
-		nextPageToken := ""
-		if len(result) > 0 {
-			totalRecords := len(res.Result)
-			nextPageToken = getNextPageToken(options.PageToken, options.PageSize, totalRecords, len(result))
-		}
-		return users, nextPageToken, annotation, nil
-	} else {
-		return nil, "", annotation, nil
-	}
+	return res.Result, res.Meta.Links.Next, annotation, nil
 }
 
 func (c *VultrClient) ListAccountACLs(ctx context.Context) ([]string, annotations.Annotations, error) {
@@ -101,11 +90,7 @@ func (c *VultrClient) ListAccountACLs(ctx context.Context) ([]string, annotation
 		return nil, nil, err
 	}
 
-	if len(res.Account.ACLs) > 0 {
-		return res.Account.ACLs, annotation, nil
-	} else {
-		return nil, annotation, nil
-	}
+	return res.Account.ACLs, annotation, nil
 }
 
 func (c *VultrClient) GetUserByID(ctx context.Context, userID string) (User, annotations.Annotations, error) {
@@ -114,13 +99,13 @@ func (c *VultrClient) GetUserByID(ctx context.Context, userID string) (User, ann
 	var user User
 	var annotation annotations.Annotations
 
-	queryUrl, err := url.JoinPath(baseUrl, getUserByID+userID)
+	queryUrl, err := url.JoinPath(baseUrl, fmt.Sprintf(getUserByID, userID))
 	if err != nil {
 		l.Error(fmt.Sprintf("Error creating URL: %s", err))
 		return user, nil, err
 	}
 
-	annotation, err = c.getResourcesFromAPI(ctx, queryUrl, &res, WithQueryParam("userID", userID))
+	annotation, err = c.getResourcesFromAPI(ctx, queryUrl, &res)
 	if err != nil {
 		l.Error(fmt.Sprintf("Error getting resource: %s", err))
 		return user, nil, err

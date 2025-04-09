@@ -12,7 +12,7 @@ require (
 	github.com/spf13/viper v1.20.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/oauth2 v0.26.0
+	golang.org/x/oauth2 v0.28.0
 )
 
 require (
@@ -103,7 +103,6 @@ require (
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect
 	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect

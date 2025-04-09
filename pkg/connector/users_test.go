@@ -2,27 +2,32 @@ package connector
 
 import (
 	"context"
-	"github.com/conductorone/baton-sdk/pkg/uhttp"
-	"github.com/conductorone/baton-vultr/pkg/client"
-	"github.com/conductorone/baton-vultr/test"
 	"io"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/conductorone/baton-sdk/pkg/uhttp"
+	"github.com/conductorone/baton-vultr/pkg/client"
+	"github.com/conductorone/baton-vultr/test"
 )
 
 var pageOptions = client.PageOptions{
-	PageSize:  5,
-	PageToken: "",
+	Next:     "",
+	PageSize: 0,
 }
 
 // Tests that the client can fetch users based on the documented API below.
 func TestVultrClient_GetUsers(t *testing.T) {
+	body, err := test.ReadFile("usersMock.json")
+	if err != nil {
+		t.Fatalf("Error reading body: %s", err)
+	}
 	mockResponse := &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader(test.ReadFile("usersMock.json"))),
+		Body:       io.NopCloser(strings.NewReader(body)),
 	}
 	mockResponse.Header.Set("Content-Type", "application/json")
 
@@ -54,11 +59,7 @@ func TestVultrClient_GetUsers(t *testing.T) {
 			ACLs:       test.Users[index]["acls"].([]string),
 		}
 
-		if !reflect.DeepEqual(user.Id, expectedUser.Id) ||
-			!reflect.DeepEqual(user.Name, expectedUser.Name) ||
-			!reflect.DeepEqual(user.Email, expectedUser.Email) ||
-			!reflect.DeepEqual(user.ApiEnabled, expectedUser.ApiEnabled) ||
-			!reflect.DeepEqual(user.ACLs, expectedUser.ACLs) {
+		if !reflect.DeepEqual(user, expectedUser) {
 			t.Errorf("Unexpected user: got %+v, want %+v", user, expectedUser)
 		}
 	}
@@ -73,8 +74,17 @@ func TestVultrClient_GetUsers_RequestDetails(t *testing.T) {
 	mockTransport := &test.MockRoundTripper{
 		Response: &http.Response{
 			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(strings.NewReader(`{"users": []}`)),
-			Header:     make(http.Header),
+			Body: io.NopCloser(strings.NewReader(`{
+			"users": [],
+			"meta": {
+				"total": 0,
+				"links": {
+					"next": "",
+					"prev": ""
+				}
+			}
+		}`)),
+			Header: make(http.Header),
 		},
 		Err: nil,
 	}
@@ -84,6 +94,7 @@ func TestVultrClient_GetUsers_RequestDetails(t *testing.T) {
 		capturedRequest = req
 		return mockTransport.Response, mockTransport.Err
 	}
+
 	mockTransport.SetRoundTrip(mockRoundTrip)
 
 	httpClient := &http.Client{Transport: mockTransport}
@@ -107,8 +118,9 @@ func TestVultrClient_GetUsers_RequestDetails(t *testing.T) {
 	}
 
 	expectedURL := "https://api.vultr.com/v2/users"
-	if capturedRequest.URL.String() != expectedURL && !strings.Contains(capturedRequest.URL.String(), "limit=5") {
-		t.Errorf("Expected URL %s, got %s", expectedURL, capturedRequest.URL.String())
+	actualURL := capturedRequest.URL.String()
+	if !strings.HasPrefix(actualURL, expectedURL) {
+		t.Errorf("Expected URL to start with %s, got %s", expectedURL, actualURL)
 	}
 
 	expectedHeaders := map[string]string{

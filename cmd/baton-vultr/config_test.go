@@ -1,9 +1,10 @@
 package main
 
 import (
+	"testing"
+
 	"github.com/conductorone/baton-sdk/pkg/field"
 	"github.com/conductorone/baton-sdk/pkg/test"
-	"testing"
 )
 
 func TestConfigs(t *testing.T) {
@@ -12,9 +13,5 @@ func TestConfigs(t *testing.T) {
 		FieldRelationships...,
 	)
 
-	testCases := []test.TestCase{
-		// Add test cases here.
-	}
-
-	test.ExerciseTestCases(t, configurationSchema, ValidateConfig, testCases)
+	test.ExerciseTestCases(t, configurationSchema, ValidateConfig, []test.TestCase{})
 }

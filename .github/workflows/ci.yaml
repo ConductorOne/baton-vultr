@@ -7,7 +7,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
+          go-version: 1.23.x
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run linters
@@ -18,9 +18,11 @@ jobs:
   go-test:
     strategy:
       matrix:
-        go-version: [1.22.x]
+        go-version: [1.23.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
+    env:
+      BEARERTOKEN: ${{ secrets.BEARERTOKEN }}
     steps:
       - name: Install Go
         if: success()
@@ -40,12 +42,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BATON_LOG_LEVEL: debug
-      bearerToken: ${{ secrets.bearerToken }}
+      BEARERTOKEN: ${{ secrets.BEARERTOKEN }}
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
+          go-version: 1.23.x
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -53,10 +55,7 @@ jobs:
         run: go build -o baton-vultr ./cmd/baton-vultr
 
       - name: Run baton-vultr
-        run: ./baton-vultr
+        run: ./baton-vultr --bearer-token=${{env.BEARERTOKEN}}
 
-      - name: Show Baton Resources
-        run: ./baton-vultr resources list --apikey=$bearerToken | tee resources.log
-
-      - name: Show Baton Grants
-        run: ./baton-vultr grants list --apikey=$bearerToken  | tee grants.log
+      - name: List Baton Commands
+        run: ./baton-vultr --help

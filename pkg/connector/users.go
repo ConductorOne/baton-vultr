@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
@@ -16,29 +17,24 @@ type userBuilder struct {
 	client       *client.VultrClient
 }
 
-func (u *userBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
+func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 	return userResourceType
 }
 
 // List returns all the users from the database as resource objects.
 // Users include a UserTrait because they are the 'shape' of a standard user.
-func (u *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
 	var resources []*v2.Resource
+
 	bag, pageToken, err := getToken(pToken, userResourceType)
-
 	if err != nil {
 		return nil, "", nil, err
 	}
+
 	users, nextPageToken, _, err := u.client.ListUsers(ctx, client.PageOptions{
-		PageSize:  pToken.Size,
-		PageToken: pageToken,
+		Next:     pageToken,
+		PageSize: pToken.Size,
 	})
-
-	if err != nil {
-		return nil, "", nil, err
-	}
-
-	err = bag.Next(nextPageToken)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -49,8 +45,12 @@ func (u *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 		if err != nil {
 			return nil, "", nil, err
 		}
-
 		resources = append(resources, userResource)
+	}
+
+	err = bag.Next(nextPageToken)
+	if err != nil {
+		return nil, "", nil, err
 	}
 
 	nextPageToken, err = bag.Marshal()
@@ -62,11 +62,12 @@ func (u *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 }
 
 // Entitlements always returns an empty slice for users.
-func (u *userBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+func (u *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }
 
-// Grants always returns an empty slice for users since they don't have any entitlements.
+// The Grants function in the acls resource is performed in users for a better performance,
+// since in this way for each user there is, the grants are directly assigned depending on which acls he has.
 func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var grants []*v2.Grant
 	var userID = res.Id.Resource
@@ -88,7 +89,7 @@ func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ *paginatio
 			userCopy := user
 			userResource, _ := parseIntoUserResource(&userCopy)
 			userGrant := grant.NewGrant(aclResource, "assigned", userResource, grant.WithAnnotation(&v2.V1Identifier{
-				Id: fmt.Sprintf("role-grant:%s:%s:%s", userACL, userID, "assigned"),
+				Id: fmt.Sprintf("acl-grant:\n:%s:%s:%s", userACL, userID, "assigned"),
 			}))
 			grants = append(grants, userGrant)
 		}
@@ -111,6 +112,7 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 		resource.WithUserProfile(profile),
 		resource.WithStatus(userStatus),
 		resource.WithUserLogin(displayName),
+		resource.WithEmail(user.Email, true),
 	}
 
 	ret, err := resource.NewUserResource(

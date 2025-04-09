@@ -3,14 +3,12 @@ package connector
 import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
-	"strconv"
 )
 
 func getToken(pToken *pagination.Token, resourceType *v2.ResourceType) (*pagination.Bag, string, error) {
-	var pageToken string
-	_, bag, err := unmarshalSkipToken(pToken)
+	bag, pageToken, err := unmarshalSkipToken(pToken)
 	if err != nil {
-		return bag, "", err
+		return nil, "", err
 	}
 
 	if bag.Current() == nil {
@@ -19,27 +17,20 @@ func getToken(pToken *pagination.Token, resourceType *v2.ResourceType) (*paginat
 		})
 	}
 
-	if bag.Current().Token != "" {
-		pageToken = bag.Current().Token
-	}
-
 	return bag, pageToken, nil
 }
 
-func unmarshalSkipToken(token *pagination.Token) (int32, *pagination.Bag, error) {
+func unmarshalSkipToken(token *pagination.Token) (*pagination.Bag, string, error) {
 	b := &pagination.Bag{}
 	err := b.Unmarshal(token.Token)
 	if err != nil {
-		return 0, nil, err
+		return nil, "", err
 	}
+
 	current := b.Current()
-	skip := int32(0)
-	if current != nil && current.Token != "" {
-		skip64, err := strconv.ParseInt(current.Token, 10, 32)
-		if err != nil {
-			return 0, nil, err
-		}
-		skip = int32(skip64)
+	if current == nil || current.Token == "" {
+		return b, "", nil
 	}
-	return skip, b, nil
+
+	return b, current.Token, nil
 }

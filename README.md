@@ -92,6 +92,7 @@ Available Commands:
   help               Help about any command
 
 Flags:
+      --bearer-token                 The client secret token used to authenticate with ConductorOne 
       --client-id string             The client ID used to authenticate with ConductorOne ($BATON_CLIENT_ID)
       --client-secret string         The client secret used to authenticate with ConductorOne ($BATON_CLIENT_SECRET)
   -f, --file string                  The path to the c1z file to sync with ($BATON_FILE) (default "sync.c1z")

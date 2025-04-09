@@ -3,22 +3,23 @@ package connector
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-vultr/pkg/client"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 var (
 	ctx              = context.Background()
+	apiToken         = os.Getenv("BEARERTOKEN")
 	parentResourceID = &v2.ResourceId{}
-	pToken           = &pagination.Token{Size: 5, Token: ""}
+	pToken           = &pagination.Token{Size: 50, Token: ""}
 )
 
 func initClient(t *testing.T) *client.VultrClient {
-	apiToken, _ := os.LookupEnv("bearerToken")
 	if apiToken == "" {
 		message :=
 			fmt.Sprintf("Any of the required params not found. Api token: %s", apiToken)
