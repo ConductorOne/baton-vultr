@@ -9,9 +9,9 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/field"
 	"github.com/conductorone/baton-sdk/pkg/types"
+	"github.com/conductorone/baton-vultr/pkg/connector"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/spf13/viper"
-	"github.com/conductorone/baton-vultr/pkg/connector"
 	"go.uber.org/zap"
 )
 
@@ -44,19 +44,25 @@ func main() {
 
 func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, error) {
 	l := ctxzap.Extract(ctx)
+
 	if err := ValidateConfig(v); err != nil {
 		return nil, err
 	}
 
-	cb, err := connector.New(ctx)
+	vultrBearerToken := v.GetString(bearerTokenField.FieldName)
+
+	connectorBuilder, err := connector.New(ctx, vultrBearerToken)
 	if err != nil {
-		l.Error("error creating connector", zap.Error(err))
+		l.Error("error creating newConnector", zap.Error(err))
 		return nil, err
 	}
-	connector, err := connectorbuilder.NewConnector(ctx, cb)
+
+	opts := make([]connectorbuilder.Opt, 0)
+
+	newConnector, err := connectorbuilder.NewConnector(ctx, connectorBuilder, opts...)
 	if err != nil {
-		l.Error("error creating connector", zap.Error(err))
+		l.Error("error creating newConnector", zap.Error(err))
 		return nil, err
 	}
-	return connector, nil
+	return newConnector, nil
 }

@@ -1,0 +1,52 @@
+{
+  "users": [
+      {
+        "id": "1e5ab26c3423",
+        "name": "User_Root",
+        "email": "userroot@gmail.com",
+        "apiEnabled": true,
+        "acls": ["manage_users"]
+      },
+      {
+        "id": "776da6a156565",
+        "name": "deployServerUser",
+        "email": "deployServerUser@gmail.com",
+        "apiEnabled": true,
+        "acls": ["subscriptions", "subscriptions_view", "provisioning"]
+      },
+      {
+        "id": "e97d4084dfd6",
+        "name": "upgradeServersUser",
+        "email": "upgradeServerUser@gmail.com",
+        "apiEnabled": true,
+        "acls": ["subscriptions", "subscriptions_view", "upgrade"]
+      },
+      {
+        "id": "b6fd6483-343",
+        "name": "receiveAUO/TOSUser",
+        "email": "receiveAUO/TOSUser@gmail.com",
+        "apiEnabled": true,
+        "acls": ["support", "abuse"]
+      },
+      {
+        "id": "257b3c9f-bddbc8a54dd330",
+        "name": "withoutRootPermissionUser",
+        "email": "withoutRootPermissionUser@gmail.com",
+        "apiEnabled": true,
+        "acls": [
+          "subscriptions", "subscriptions_view", "provisioning", "upgrade", "billing", "support",
+          "dns", "firewall", "objstore", "loadbalancer", "vke", "abuse", "alerts"
+        ]
+      }
+    ],
+    "meta": {
+      "total": 15,
+      "links": {
+        "next": "",
+        "prev": ""
+      }
+    }
+  }
+
+
+

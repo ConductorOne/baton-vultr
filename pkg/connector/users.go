@@ -2,34 +2,135 @@ package connector
 
 import (
 	"context"
+	"fmt"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/conductorone/baton-sdk/pkg/types/grant"
+	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/conductorone/baton-vultr/pkg/client"
 )
 
-type userBuilder struct{}
+type userBuilder struct {
+	resourceType *v2.ResourceType
+	client       *client.VultrClient
+}
 
-func (o *userBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
+func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 	return userResourceType
 }
 
 // List returns all the users from the database as resource objects.
 // Users include a UserTrait because they are the 'shape' of a standard user.
-func (o *userBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+	var resources []*v2.Resource
+
+	bag, pageToken, err := getToken(pToken, userResourceType)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	users, nextPageToken, _, err := u.client.ListUsers(ctx, client.PageOptions{
+		Next:     pageToken,
+		PageSize: pToken.Size,
+	})
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for _, user := range users {
+		userCopy := user
+		userResource, err := parseIntoUserResource(&userCopy)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		resources = append(resources, userResource)
+	}
+
+	err = bag.Next(nextPageToken)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	nextPageToken, err = bag.Marshal()
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	return resources, nextPageToken, nil, nil
 }
 
 // Entitlements always returns an empty slice for users.
-func (o *userBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+func (u *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }
 
-// Grants always returns an empty slice for users since they don't have any entitlements.
-func (o *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+// The Grants function in the acls resource is performed in users for a better performance,
+// since in this way for each user there is, the grants are directly assigned depending on which acls he has.
+func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+	var grants []*v2.Grant
+	var userID = res.Id.Resource
+
+	user, _, err := u.client.GetUserByID(ctx, userID)
+
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for _, userACL := range user.ACLs {
+		if userACL != "" {
+			aclResource := &v2.Resource{
+				Id: &v2.ResourceId{
+					ResourceType: aclResourceType.Id,
+					Resource:     userACL,
+				},
+			}
+			userCopy := user
+			userResource, _ := parseIntoUserResource(&userCopy)
+			userGrant := grant.NewGrant(aclResource, "assigned", userResource, grant.WithAnnotation(&v2.V1Identifier{
+				Id: fmt.Sprintf("acl-grant:\n:%s:%s:%s", userACL, userID, "assigned"),
+			}))
+			grants = append(grants, userGrant)
+		}
+	}
+	return grants, "", nil, nil
 }
 
-func newUserBuilder() *userBuilder {
-	return &userBuilder{}
+func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
+	var userStatus = v2.UserTrait_Status_STATUS_ENABLED
+
+	profile := map[string]interface{}{
+		"user_id":   user.Id,
+		"user_name": user.Name,
+		"email_id":  user.Email,
+	}
+
+	displayName := user.Name
+
+	userTraits := []resource.UserTraitOption{
+		resource.WithUserProfile(profile),
+		resource.WithStatus(userStatus),
+		resource.WithUserLogin(displayName),
+		resource.WithEmail(user.Email, true),
+	}
+
+	ret, err := resource.NewUserResource(
+		displayName,
+		userResourceType,
+		user.Id,
+		userTraits,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+func newUserBuilder(c *client.VultrClient) *userBuilder {
+	return &userBuilder{
+		resourceType: userResourceType,
+		client:       c,
+	}
 }
