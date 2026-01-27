@@ -8,8 +8,8 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/config"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/connectorrunner"
-	"github.com/conductorone/baton-sdk/pkg/field"
 	"github.com/conductorone/baton-sdk/pkg/types"
+	cfg "github.com/conductorone/baton-vultr/pkg/config"
 	"github.com/conductorone/baton-vultr/pkg/connector"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/spf13/viper"
@@ -25,9 +25,7 @@ func main() {
 		ctx,
 		"baton-vultr",
 		getConnector,
-		field.Configuration{
-			Fields: ConfigurationFields,
-		},
+		cfg.Config,
 		connectorrunner.WithDefaultCapabilitiesConnectorBuilder(&connector.Connector{}),
 	)
 	if err != nil {
@@ -51,7 +49,7 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 		return nil, err
 	}
 
-	vultrBearerToken := v.GetString(bearerTokenField.FieldName)
+	vultrBearerToken := v.GetString(cfg.BearerTokenField.FieldName)
 
 	connectorBuilder, err := connector.New(ctx, vultrBearerToken)
 	if err != nil {
