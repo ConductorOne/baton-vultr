@@ -6,7 +6,9 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
+	"github.com/conductorone/baton-sdk/pkg/cli"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	cfg "github.com/conductorone/baton-vultr/pkg/config"
 	"github.com/conductorone/baton-vultr/pkg/client"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"go.uber.org/zap"
@@ -17,8 +19,8 @@ type Connector struct {
 }
 
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
-func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.ResourceSyncer {
-	return []connectorbuilder.ResourceSyncer{
+func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.ResourceSyncerV2 {
+	return []connectorbuilder.ResourceSyncerV2{
 		newUserBuilder(d.client),
 		newACLbuilder(d.client),
 	}
@@ -45,16 +47,18 @@ func (d *Connector) Validate(_ context.Context) (annotations.Annotations, error)
 }
 
 // New returns a new instance of the connector.
-func New(ctx context.Context, vultrBearerToken string) (*Connector, error) {
+func New(ctx context.Context, cc *cfg.Vultr, opts *cli.ConnectorOpts) (connectorbuilder.ConnectorBuilderV2, []connectorbuilder.Opt, error) {
 	l := ctxzap.Extract(ctx)
+
+	vultrBearerToken := cc.BearerToken
 
 	vultrClient, err := client.New(ctx, vultrBearerToken)
 	if err != nil {
 		l.Error("error creating Vultr client", zap.Error(err))
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &Connector{
 		client: vultrClient,
-	}, nil
+	}, nil, nil
 }

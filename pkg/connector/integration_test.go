@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
-	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +16,7 @@ var (
 	ctx              = context.Background()
 	apiToken         = os.Getenv("BEARERTOKEN")
 	parentResourceID = &v2.ResourceId{}
-	pToken           = &pagination.Token{Size: 50, Token: ""}
+	syncOpAttrs      = resource.SyncOpAttrs{PageToken: ""}
 )
 
 func initClient(t *testing.T) *client.VultrClient {
@@ -38,7 +38,7 @@ func TestUserBuilderList(t *testing.T) {
 	c := initClient(t)
 
 	u := newUserBuilder(c)
-	res, _, _, err := u.List(ctx, parentResourceID, pToken)
+	res, _, err := u.List(ctx, parentResourceID, syncOpAttrs)
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 
@@ -51,7 +51,7 @@ func TestACLsBuilderList(t *testing.T) {
 
 	acl := newACLbuilder(c)
 
-	res, _, _, err := acl.List(ctx, parentResourceID, pToken)
+	res, _, err := acl.List(ctx, parentResourceID, syncOpAttrs)
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 

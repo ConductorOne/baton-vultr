@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
-	"github.com/conductorone/baton-sdk/pkg/annotations"
-	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
@@ -23,59 +21,61 @@ func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 
 // List returns all the users from the database as resource objects.
 // Users include a UserTrait because they are the 'shape' of a standard user.
-func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, opts resource.SyncOpAttrs) ([]*v2.Resource, *resource.SyncOpResults, error) {
 	var resources []*v2.Resource
 
-	bag, pageToken, err := getToken(pToken, userResourceType)
+	bag, pageToken, err := getToken(opts.PageToken, userResourceType)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 
 	users, nextPageToken, _, err := u.client.ListUsers(ctx, client.PageOptions{
 		Next:     pageToken,
-		PageSize: pToken.Size,
+		PageSize: 50,
 	})
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 
 	for _, user := range users {
 		userCopy := user
 		userResource, err := parseIntoUserResource(&userCopy)
 		if err != nil {
-			return nil, "", nil, err
+			return nil, nil, err
 		}
 		resources = append(resources, userResource)
 	}
 
 	err = bag.Next(nextPageToken)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 
 	nextPageToken, err = bag.Marshal()
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 
-	return resources, nextPageToken, nil, nil
+	return resources, &resource.SyncOpResults{
+		NextPageToken: nextPageToken,
+	}, nil
 }
 
 // Entitlements always returns an empty slice for users.
-func (u *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+func (u *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ resource.SyncOpAttrs) ([]*v2.Entitlement, *resource.SyncOpResults, error) {
+	return nil, nil, nil
 }
 
 // The Grants function in the acls resource is performed in users for a better performance,
 // since in this way for each user there is, the grants are directly assigned depending on which acls he has.
-func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ resource.SyncOpAttrs) ([]*v2.Grant, *resource.SyncOpResults, error) {
 	var grants []*v2.Grant
 	var userID = res.Id.Resource
 
 	user, _, err := u.client.GetUserByID(ctx, userID)
 
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 
 	for _, userACL := range user.ACLs {
@@ -94,7 +94,7 @@ func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ *paginatio
 			grants = append(grants, userGrant)
 		}
 	}
-	return grants, "", nil, nil
+	return grants, nil, nil
 }
 
 func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
