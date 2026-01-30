@@ -24,7 +24,7 @@ func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, opts resource.SyncOpAttrs) ([]*v2.Resource, *resource.SyncOpResults, error) {
 	var resources []*v2.Resource
 
-	bag, pageToken, err := getToken(opts.PageToken, userResourceType)
+	bag, pageToken, err := getToken(opts.PageToken.Token, userResourceType)
 	if err != nil {
 		return nil, nil, err
 	}
