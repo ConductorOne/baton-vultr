@@ -9,20 +9,26 @@ var (
 		"bearer-token",
 		field.WithDisplayName("Bearer Token"),
 		field.WithDescription("Bearer Token for authentication"),
-		field.WithRequired(true),
 		field.WithIsSecret(true),
+		field.WithRequired(true),
 	)
-	configurationFields = []field.SchemaField{
+
+	// ConfigurationFields defines the external configuration required for the
+	// connector to run.
+	ConfigurationFields = []field.SchemaField{
 		bearerTokenField,
 	}
-	fieldRelationships = []field.SchemaFieldRelationship{}
+
+	// FieldRelationships defines relationships between the fields listed in
+	// ConfigurationFields that can be automatically validated.
+	FieldRelationships = []field.SchemaFieldRelationship{}
 )
 
 //go:generate go run ./gen
-var Config = field.Configuration{
-	Fields:       configurationFields,
-	Constraints:  fieldRelationships,
-	DisplayName:  "Vultr",
-	HelpUrl:      "/docs/baton/vultr",
-	IconUrl:      "/static/app-icons/vultr.svg",
-}
+var Config = field.NewConfiguration(
+	ConfigurationFields,
+	field.WithConstraints(FieldRelationships...),
+	field.WithConnectorDisplayName("Vultr"),
+	field.WithHelpUrl("/docs/baton/vultr"),
+	field.WithIconUrl("/static/app-icons/vultr.svg"),
+)
