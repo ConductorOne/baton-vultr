@@ -6,7 +6,6 @@ import (
 	cfg "github.com/conductorone/baton-vultr/pkg/config"
 	"github.com/conductorone/baton-vultr/pkg/connector"
 	"github.com/conductorone/baton-sdk/pkg/config"
-	"github.com/conductorone/baton-sdk/pkg/connectorrunner"
 )
 
 var version = "dev"
@@ -18,6 +17,5 @@ func main() {
 		version,
 		cfg.Config,
 		connector.New,
-		connectorrunner.WithDefaultCapabilitiesConnectorBuilder(&connector.Connector{}),
 	)
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ var (
 	ctx              = context.Background()
 	apiToken         = os.Getenv("BEARERTOKEN")
 	parentResourceID = &v2.ResourceId{}
-	syncOpAttrs      = resource.SyncOpAttrs{PageToken: ""}
+	syncOpAttrs      = resource.SyncOpAttrs{PageToken: pagination.Token{}}
 )
 
 func initClient(t *testing.T) *client.VultrClient {
