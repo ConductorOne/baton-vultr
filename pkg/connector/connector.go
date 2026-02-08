@@ -45,10 +45,10 @@ func (d *Connector) Validate(_ context.Context) (annotations.Annotations, error)
 }
 
 // New returns a new instance of the connector.
-func New(ctx context.Context, vultrBearerToken string) (*Connector, error) {
+func New(ctx context.Context, vultrBearerToken string, baseURL string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
 
-	vultrClient, err := client.New(ctx, vultrBearerToken)
+	vultrClient, err := client.New(ctx, vultrBearerToken, baseURL)
 	if err != nil {
 		l.Error("error creating Vultr client", zap.Error(err))
 		return nil, err

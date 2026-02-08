@@ -26,7 +26,7 @@ func initClient(t *testing.T) *client.VultrClient {
 		t.Skip(message)
 	}
 
-	c, err := client.New(ctx, apiToken)
+	c, err := client.New(ctx, apiToken, "")
 
 	if err != nil {
 		t.Errorf("ERROR: Failed to create client: %v", err)

@@ -100,7 +100,7 @@ func TestVultrClient_GetUsers_RequestDetails(t *testing.T) {
 	httpClient := &http.Client{Transport: mockTransport}
 	baseHttpClient := uhttp.NewBaseHttpClient(httpClient)
 
-	testClient, err := client.NewClient("access-token-hash", baseHttpClient)
+	testClient, err := client.NewClient("access-token-hash", "", baseHttpClient)
 	if err != nil {
 		t.Fatalf("Error creating client: %v", err)
 	}
