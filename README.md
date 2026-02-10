@@ -1,6 +1,6 @@
 ![Baton Logo](./baton-logo.png)
 
-# `baton-vultr` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-vultr.svg)](https://pkg.go.dev/github.com/conductorone/baton-vultr) ![main ci](https://github.com/conductorone/baton-vultr/actions/workflows/main.yaml/badge.svg)
+# `baton-vultr` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-vultr.svg)](https://pkg.go.dev/github.com/conductorone/baton-vultr) ![ci](https://github.com/conductorone/baton-vultr/actions/workflows/ci.yaml/badge.svg)
 
 `baton-vultr` is a connector for [Vultr](https://www.vultr.com/) built using the [Baton SDK](https://github.com/conductorone/baton-sdk).
 
@@ -92,7 +92,7 @@ Available Commands:
   help               Help about any command
 
 Flags:
-      --bearer-token                 The client secret token used to authenticate with ConductorOne 
+      --bearer-token                 The client secret token used to authenticate with ConductorOne
       --client-id string             The client ID used to authenticate with ConductorOne ($BATON_CLIENT_ID)
       --client-secret string         The client secret used to authenticate with ConductorOne ($BATON_CLIENT_SECRET)
   -f, --file string                  The path to the c1z file to sync with ($BATON_FILE) (default "sync.c1z")
