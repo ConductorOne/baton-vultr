@@ -9,6 +9,7 @@ var (
 	bearerTokenField = field.StringField(
 		"bearer-token",
 		field.WithDescription("Bearer Token for authentication"),
+		field.WithIsSecret(true),
 		field.WithRequired(true),
 	)
 	// ConfigurationFields defines the external configuration required for the
