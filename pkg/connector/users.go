@@ -23,16 +23,15 @@ func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 // Users include a UserTrait because they are the 'shape' of a standard user.
 func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, opts rs.SyncOpAttrs) ([]*v2.Resource, *rs.SyncOpResults, error) {
 	var resources []*v2.Resource
-	pToken := &opts.PageToken
 
-	bag, pageToken, err := getToken(pToken, userResourceType)
+	bag, pageToken, err := getToken(opts.PageToken.Token, userResourceType)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	users, nextPageToken, _, err := u.client.ListUsers(ctx, client.PageOptions{
 		Next:     pageToken,
-		PageSize: pToken.Size,
+		PageSize: 50,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -86,7 +85,10 @@ func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ rs.SyncOpA
 				},
 			}
 			userCopy := user
-			userResource, _ := parseIntoUserResource(&userCopy)
+			userResource, err := parseIntoUserResource(&userCopy)
+			if err != nil {
+				return nil, nil, err
+			}
 			userGrant := grant.NewGrant(aclResource, "assigned", userResource, grant.WithAnnotation(&v2.V1Identifier{
 				Id: fmt.Sprintf("acl-grant:\n:%s:%s:%s", userACL, userID, "assigned"),
 			}))
