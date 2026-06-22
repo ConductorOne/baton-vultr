@@ -105,7 +105,7 @@ func NewTestClient(response *http.Response, err error) *client.VultrClient {
 
 	bearerToken := ""
 
-	newClientT, _ := client.NewClient(bearerToken, baseHttpClient)
+	newClientT, _ := client.NewClient(bearerToken, "", baseHttpClient)
 
 	return newClientT
 }

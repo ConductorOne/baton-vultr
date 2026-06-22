@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	baseUrl             = "https://api.vultr.com/v2"
+	DefaultBaseURL      = "https://api.vultr.com/v2"
 	getUsers            = "/users"
 	getUserByID         = "/users/%s"
 	getAccountPrincipal = "/account"
@@ -23,9 +23,10 @@ const (
 type VultrClient struct {
 	wrapper     *uhttp.BaseHttpClient
 	TokenSource oauth2.TokenSource
+	baseURL     string
 }
 
-func New(ctx context.Context, bearerToken string) (*VultrClient, error) {
+func New(ctx context.Context, bearerToken string, baseURL string) (*VultrClient, error) {
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
@@ -34,22 +35,30 @@ func New(ctx context.Context, bearerToken string) (*VultrClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create base HTTP client: %w", err)
 	}
+	if baseURL == "" {
+		baseURL = DefaultBaseURL
+	}
 	client := VultrClient{
 		wrapper:     cli,
 		TokenSource: getTokenSource(ctx, bearerToken),
+		baseURL:     baseURL,
 	}
 	return &client, nil
 }
 
-func NewClient(bearerToken string, httpClient ...*uhttp.BaseHttpClient) (*VultrClient, error) {
+func NewClient(bearerToken string, baseURL string, httpClient ...*uhttp.BaseHttpClient) (*VultrClient, error) {
 	tokenSource := getTokenSource(context.Background(), bearerToken)
 	var wrapper = &uhttp.BaseHttpClient{}
 	if len(httpClient) > 0 {
 		wrapper = httpClient[0]
 	}
+	if baseURL == "" {
+		baseURL = DefaultBaseURL
+	}
 	return &VultrClient{
 		wrapper:     wrapper,
 		TokenSource: tokenSource,
+		baseURL:     baseURL,
 	}, nil
 }
 
@@ -58,7 +67,7 @@ func (c *VultrClient) ListUsers(ctx context.Context, options PageOptions) ([]Use
 	var res UserResponse
 	var annotation annotations.Annotations
 
-	queryUrl, err := url.JoinPath(baseUrl, getUsers)
+	queryUrl, err := url.JoinPath(c.baseURL, getUsers)
 	if err != nil {
 		l.Error(fmt.Sprintf("Error creating UserResponse URL: %s", err))
 		return nil, "", nil, err
@@ -78,7 +87,7 @@ func (c *VultrClient) ListAccountACLs(ctx context.Context) ([]string, annotation
 	var res AccountResponse
 	var annotation annotations.Annotations
 
-	queryUrl, err := url.JoinPath(baseUrl, getAccountPrincipal)
+	queryUrl, err := url.JoinPath(c.baseURL, getAccountPrincipal)
 	if err != nil {
 		l.Error(fmt.Sprintf("Error creating Account URL: %s", err))
 		return nil, nil, err
@@ -99,7 +108,7 @@ func (c *VultrClient) GetUserByID(ctx context.Context, userID string) (User, ann
 	var user User
 	var annotation annotations.Annotations
 
-	queryUrl, err := url.JoinPath(baseUrl, fmt.Sprintf(getUserByID, userID))
+	queryUrl, err := url.JoinPath(c.baseURL, fmt.Sprintf(getUserByID, userID))
 	if err != nil {
 		l.Error(fmt.Sprintf("Error creating URL: %s", err))
 		return user, nil, err

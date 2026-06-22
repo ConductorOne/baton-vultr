@@ -50,8 +50,9 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 	}
 
 	vultrBearerToken := v.GetString(bearerTokenField.FieldName)
+	baseURL := v.GetString(baseURLField.FieldName)
 
-	connectorBuilder, err := connector.New(ctx, vultrBearerToken)
+	connectorBuilder, err := connector.New(ctx, vultrBearerToken, baseURL)
 	if err != nil {
 		l.Error("error creating newConnector", zap.Error(err))
 		return nil, err
