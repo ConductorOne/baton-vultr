@@ -1,24 +1,26 @@
 name: ci
-on: pull_request
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  push:
+    branches:
+      - main
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
       BATON_LOG_LEVEL: debug
-      BEARERTOKEN: ${{ secrets.BEARERTOKEN }}
+      BATON_BEARER_TOKEN: ${{ secrets.BATON_BEARER_TOKEN }}
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.23.x
       - name: Checkout code
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - name: Build baton-vultr
         run: go build -o baton-vultr ./cmd/baton-vultr
-
       - name: Run baton-vultr
-        run: ./baton-vultr --bearer-token=${{env.BEARERTOKEN}}
-
+        run: ./baton-vultr
       - name: List Baton Commands
         run: ./baton-vultr --help
