@@ -31,7 +31,7 @@ func (u *userBuilder) List(ctx context.Context, _ *v2.ResourceId, opts rs.SyncOp
 
 	users, nextPageToken, _, err := u.client.ListUsers(ctx, client.PageOptions{
 		Next:     pageToken,
-		PageSize: 50,
+		PageSize: opts.PageToken.Size,
 	})
 	if err != nil {
 		return nil, nil, err

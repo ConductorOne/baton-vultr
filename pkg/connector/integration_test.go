@@ -14,7 +14,7 @@ import (
 
 var (
 	ctx              = context.Background()
-	apiToken         = os.Getenv("BEARERTOKEN")
+	apiToken         = os.Getenv("BATON_BEARER_TOKEN")
 	parentResourceID = &v2.ResourceId{}
 	syncOpts         = rs.SyncOpAttrs{}
 )
