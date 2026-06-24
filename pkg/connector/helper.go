@@ -5,7 +5,7 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 )
 
-func getToken(pToken *pagination.Token, resourceType *v2.ResourceType) (*pagination.Bag, string, error) {
+func getToken(pToken string, resourceType *v2.ResourceType) (*pagination.Bag, string, error) {
 	bag, pageToken, err := unmarshalSkipToken(pToken)
 	if err != nil {
 		return nil, "", err
@@ -20,9 +20,9 @@ func getToken(pToken *pagination.Token, resourceType *v2.ResourceType) (*paginat
 	return bag, pageToken, nil
 }
 
-func unmarshalSkipToken(token *pagination.Token) (*pagination.Bag, string, error) {
+func unmarshalSkipToken(token string) (*pagination.Bag, string, error) {
 	b := &pagination.Bag{}
-	err := b.Unmarshal(token.Token)
+	err := b.Unmarshal(token)
 	if err != nil {
 		return nil, "", err
 	}
