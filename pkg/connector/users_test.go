@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
@@ -91,15 +92,13 @@ func mockUserByIDClient(t *testing.T) *client.VultrClient {
 	return test.NewTestClient(mockResponse, nil)
 }
 
-// TestUserBuilder_Grants_EmitsACLGrants_WhenSyncACLsEnabled verifies that
-// userBuilder.Grants delegates to the acl grant-emission optimization and
-// returns non-empty grants when the acl resource type is being synced.
-func TestUserBuilder_Grants_EmitsACLGrants_WhenSyncACLsEnabled(t *testing.T) {
-	u := &userBuilder{
-		resourceType: userResourceType,
-		client:       mockUserByIDClient(t),
-		syncACLs:     true,
-	}
+// TestUserBuilder_Grants_EmitsACLGrants verifies that userBuilder.Grants is
+// unconditional again: it always emits acl grants when called directly.
+// Gating now happens at the SDK-sync layer via the resource-type annotation
+// set on ResourceType() (see TestNewUserBuilder_ResourceType_Annotations*
+// below), not inside Grants() itself.
+func TestUserBuilder_Grants_EmitsACLGrants(t *testing.T) {
+	u := newUserBuilder(mockUserByIDClient(t), false)
 
 	res := &v2.Resource{
 		Id: &v2.ResourceId{
@@ -118,33 +117,37 @@ func TestUserBuilder_Grants_EmitsACLGrants_WhenSyncACLsEnabled(t *testing.T) {
 	}
 }
 
-// TestUserBuilder_Grants_SkipsACLGrants_WhenSyncACLsDisabled verifies that
-// userBuilder.Grants short-circuits to (nil, nil, nil) when the connector's
-// sync filter excludes the acl resource type, so no grant referencing an
-// unsynced resource type is emitted.
-func TestUserBuilder_Grants_SkipsACLGrants_WhenSyncACLsDisabled(t *testing.T) {
-	u := &userBuilder{
-		resourceType: userResourceType,
-		client:       mockUserByIDClient(t),
-		syncACLs:     false,
-	}
+// TestNewUserBuilder_ResourceType_Annotations_SyncACLs verifies that when acl
+// IS being synced (skipACLGrants=false), the user resource type is annotated
+// with SkipEntitlements only (users still have no entitlements of their own,
+// but their acl grants should still be emitted by the sync engine).
+func TestNewUserBuilder_ResourceType_Annotations_SyncACLs(t *testing.T) {
+	u := newUserBuilder(mockUserByIDClient(t), false)
 
-	res := &v2.Resource{
-		Id: &v2.ResourceId{
-			ResourceType: userResourceType.Id,
-			Resource:     "1e5ab26c3423",
-		},
-	}
+	rt := u.ResourceType(context.Background())
+	annos := annotations.Annotations(rt.GetAnnotations())
 
-	grants, syncOpResults, err := u.Grants(context.Background(), res, rs.SyncOpAttrs{})
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	if !annos.Contains(&v2.SkipEntitlements{}) {
+		t.Fatalf("Expected SkipEntitlements annotation to be present")
 	}
-	if grants != nil {
-		t.Fatalf("Expected nil grants when syncACLs is false, got %+v", grants)
+	if annos.Contains(&v2.SkipEntitlementsAndGrants{}) {
+		t.Fatalf("Expected SkipEntitlementsAndGrants annotation NOT to be present")
 	}
-	if syncOpResults != nil {
-		t.Fatalf("Expected nil SyncOpResults when syncACLs is false, got %+v", syncOpResults)
+}
+
+// TestNewUserBuilder_ResourceType_Annotations_SkipACLs verifies that when acl
+// is NOT being synced (skipACLGrants=true), the user resource type is
+// annotated with SkipEntitlementsAndGrants, so the SDK sync engine skips
+// calling Grants() entirely (the acl grants it would emit reference a
+// resource type that isn't part of the sync).
+func TestNewUserBuilder_ResourceType_Annotations_SkipACLs(t *testing.T) {
+	u := newUserBuilder(mockUserByIDClient(t), true)
+
+	rt := u.ResourceType(context.Background())
+	annos := annotations.Annotations(rt.GetAnnotations())
+
+	if !annos.Contains(&v2.SkipEntitlementsAndGrants{}) {
+		t.Fatalf("Expected SkipEntitlementsAndGrants annotation to be present")
 	}
 }
 

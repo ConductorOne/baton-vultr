@@ -5,19 +5,20 @@ import (
 	"fmt"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
+	"google.golang.org/protobuf/proto"
 )
 
 type userBuilder struct {
 	resourceType *v2.ResourceType
 	client       *client.VultrClient
-	syncACLs     bool
 }
 
 func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
-	return userResourceType
+	return u.resourceType
 }
 
 // List returns all the users from the database as resource objects.
@@ -68,10 +69,6 @@ func (u *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ rs.SyncO
 // The Grants function in the acls resource is performed in users for a better performance,
 // since in this way for each user there is, the grants are directly assigned depending on which acls he has.
 func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ rs.SyncOpAttrs) ([]*v2.Grant, *rs.SyncOpResults, error) {
-	if !u.syncACLs {
-		return nil, nil, nil
-	}
-
 	var grants []*v2.Grant
 	var userID = res.Id.Resource
 
@@ -134,10 +131,18 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 	return ret, nil
 }
 
-func newUserBuilder(c *client.VultrClient, syncACLs bool) *userBuilder {
+func newUserBuilder(c *client.VultrClient, skipACLGrants bool) *userBuilder {
+	resourceType := proto.Clone(userResourceType).(*v2.ResourceType)
+	userAnnos := annotations.Annotations(resourceType.GetAnnotations())
+	if skipACLGrants {
+		userAnnos.Update(&v2.SkipEntitlementsAndGrants{})
+	} else {
+		userAnnos.Update(&v2.SkipEntitlements{})
+	}
+	resourceType.Annotations = userAnnos
+
 	return &userBuilder{
-		resourceType: userResourceType,
+		resourceType: resourceType,
 		client:       c,
-		syncACLs:     syncACLs,
 	}
 }

@@ -15,14 +15,14 @@ import (
 )
 
 type Connector struct {
-	client   *client.VultrClient
-	syncACLs bool
+	client        *client.VultrClient
+	skipACLGrants bool
 }
 
 // ResourceSyncers returns a ResourceSyncerV2 for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.ResourceSyncerV2 {
 	return []connectorbuilder.ResourceSyncerV2{
-		newUserBuilder(d.client, d.syncACLs),
+		newUserBuilder(d.client, d.skipACLGrants),
 		newACLbuilder(d.client),
 	}
 }
@@ -47,8 +47,12 @@ func (d *Connector) Validate(_ context.Context) (annotations.Annotations, error)
 	return nil, nil
 }
 
-// New returns a new instance of the connector.
-func New(ctx context.Context, vultrBearerToken string) (*Connector, error) {
+// New returns a new instance of the connector. syncACLs reports whether the acl
+// resource type will be synced under the current configuration (derived from
+// cli.ConnectorOpts.WillSyncResourceType in NewLambdaConnector); when false, the
+// user syncer's resource type is annotated to skip both entitlements and grants
+// for acl, since acl grants are emitted from the user syncer as an optimization.
+func New(ctx context.Context, vultrBearerToken string, syncACLs bool) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
 
 	vultrClient, err := client.New(ctx, vultrBearerToken)
@@ -58,19 +62,22 @@ func New(ctx context.Context, vultrBearerToken string) (*Connector, error) {
 	}
 
 	return &Connector{
-		client:   vultrClient,
-		syncACLs: true,
+		client:        vultrClient,
+		skipACLGrants: !syncACLs,
 	}, nil
 }
 
 // NewLambdaConnector returns a new ConnectorBuilderV2 for use with RunConnector.
 func NewLambdaConnector(ctx context.Context, ac *cfg.Vultr, opts *cli.ConnectorOpts) (connectorbuilder.ConnectorBuilderV2, []connectorbuilder.Opt, error) {
-	c, err := New(ctx, ac.BearerToken)
+	connectorOpts := opts
+	if connectorOpts == nil {
+		connectorOpts = &cli.ConnectorOpts{}
+	}
+	syncACLs := connectorOpts.WillSyncResourceType(AclResourceTypeID)
+
+	c, err := New(ctx, ac.BearerToken, syncACLs)
 	if err != nil {
 		return nil, nil, err
-	}
-	if opts != nil {
-		c.syncACLs = opts.WillSyncResourceType(AclResourceTypeID)
 	}
 	return c, nil, nil
 }
