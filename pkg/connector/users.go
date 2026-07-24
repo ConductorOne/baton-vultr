@@ -13,6 +13,7 @@ import (
 type userBuilder struct {
 	resourceType *v2.ResourceType
 	client       *client.VultrClient
+	syncACLs     bool
 }
 
 func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
@@ -67,6 +68,10 @@ func (u *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ rs.SyncO
 // The Grants function in the acls resource is performed in users for a better performance,
 // since in this way for each user there is, the grants are directly assigned depending on which acls he has.
 func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ rs.SyncOpAttrs) ([]*v2.Grant, *rs.SyncOpResults, error) {
+	if !u.syncACLs {
+		return nil, nil, nil
+	}
+
 	var grants []*v2.Grant
 	var userID = res.Id.Resource
 
@@ -129,9 +134,10 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 	return ret, nil
 }
 
-func newUserBuilder(c *client.VultrClient) *userBuilder {
+func newUserBuilder(c *client.VultrClient, syncACLs bool) *userBuilder {
 	return &userBuilder{
 		resourceType: userResourceType,
 		client:       c,
+		syncACLs:     syncACLs,
 	}
 }

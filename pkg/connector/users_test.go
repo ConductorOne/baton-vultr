@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
 	"github.com/conductorone/baton-vultr/test"
 )
@@ -66,6 +68,83 @@ func TestVultrClient_GetUsers(t *testing.T) {
 
 	if nextOptions == nil {
 		t.Fatal("Expected non-nil nextOptions")
+	}
+}
+
+// mockUserByIDClient returns a *client.VultrClient whose GetUserByID call
+// resolves to the single-user fixture (userSingleMock.json), regardless of
+// the ID passed in.
+func mockUserByIDClient(t *testing.T) *client.VultrClient {
+	t.Helper()
+
+	body, err := test.ReadFile("userSingleMock.json")
+	if err != nil {
+		t.Fatalf("Error reading body: %s", err)
+	}
+	mockResponse := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+	mockResponse.Header.Set("Content-Type", "application/json")
+
+	return test.NewTestClient(mockResponse, nil)
+}
+
+// TestUserBuilder_Grants_EmitsACLGrants_WhenSyncACLsEnabled verifies that
+// userBuilder.Grants delegates to the acl grant-emission optimization and
+// returns non-empty grants when the acl resource type is being synced.
+func TestUserBuilder_Grants_EmitsACLGrants_WhenSyncACLsEnabled(t *testing.T) {
+	u := &userBuilder{
+		resourceType: userResourceType,
+		client:       mockUserByIDClient(t),
+		syncACLs:     true,
+	}
+
+	res := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: userResourceType.Id,
+			Resource:     "1e5ab26c3423",
+		},
+	}
+
+	grants, _, err := u.Grants(context.Background(), res, rs.SyncOpAttrs{})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(grants) != 2 {
+		t.Fatalf("Expected 2 acl grants (manage_users, billing), got %d", len(grants))
+	}
+}
+
+// TestUserBuilder_Grants_SkipsACLGrants_WhenSyncACLsDisabled verifies that
+// userBuilder.Grants short-circuits to (nil, nil, nil) when the connector's
+// sync filter excludes the acl resource type, so no grant referencing an
+// unsynced resource type is emitted.
+func TestUserBuilder_Grants_SkipsACLGrants_WhenSyncACLsDisabled(t *testing.T) {
+	u := &userBuilder{
+		resourceType: userResourceType,
+		client:       mockUserByIDClient(t),
+		syncACLs:     false,
+	}
+
+	res := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: userResourceType.Id,
+			Resource:     "1e5ab26c3423",
+		},
+	}
+
+	grants, syncOpResults, err := u.Grants(context.Background(), res, rs.SyncOpAttrs{})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if grants != nil {
+		t.Fatalf("Expected nil grants when syncACLs is false, got %+v", grants)
+	}
+	if syncOpResults != nil {
+		t.Fatalf("Expected nil SyncOpResults when syncACLs is false, got %+v", syncOpResults)
 	}
 }
 

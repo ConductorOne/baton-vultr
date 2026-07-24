@@ -15,13 +15,14 @@ import (
 )
 
 type Connector struct {
-	client *client.VultrClient
+	client   *client.VultrClient
+	syncACLs bool
 }
 
 // ResourceSyncers returns a ResourceSyncerV2 for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.ResourceSyncerV2 {
 	return []connectorbuilder.ResourceSyncerV2{
-		newUserBuilder(d.client),
+		newUserBuilder(d.client, d.syncACLs),
 		newACLbuilder(d.client),
 	}
 }
@@ -57,15 +58,19 @@ func New(ctx context.Context, vultrBearerToken string) (*Connector, error) {
 	}
 
 	return &Connector{
-		client: vultrClient,
+		client:   vultrClient,
+		syncACLs: true,
 	}, nil
 }
 
 // NewLambdaConnector returns a new ConnectorBuilderV2 for use with RunConnector.
-func NewLambdaConnector(ctx context.Context, ac *cfg.Vultr, _ *cli.ConnectorOpts) (connectorbuilder.ConnectorBuilderV2, []connectorbuilder.Opt, error) {
+func NewLambdaConnector(ctx context.Context, ac *cfg.Vultr, opts *cli.ConnectorOpts) (connectorbuilder.ConnectorBuilderV2, []connectorbuilder.Opt, error) {
 	c, err := New(ctx, ac.BearerToken)
 	if err != nil {
 		return nil, nil, err
+	}
+	if opts != nil {
+		c.syncACLs = opts.WillSyncResourceType(AclResourceTypeID)
 	}
 	return c, nil, nil
 }
