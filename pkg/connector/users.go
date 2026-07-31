@@ -101,8 +101,6 @@ func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ rs.SyncOpA
 }
 
 func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
-	var userStatus = v2.UserTrait_Status_STATUS_ENABLED
-
 	profile := map[string]interface{}{
 		"user_id":   user.Id,
 		"user_name": user.Name,
@@ -112,8 +110,6 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 	displayName := user.Name
 
 	userTraits := []rs.UserTraitOption{
-		rs.WithUserProfile(profile),
-		rs.WithStatus(userStatus),
 		rs.WithUserLogin(displayName),
 		rs.WithEmail(user.Email, true),
 	}
@@ -123,6 +119,8 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 		userResourceType,
 		user.Id,
 		userTraits,
+		rs.WithResourceProfile(profile),
+		rs.WithResourceStatus(v2.Status_RESOURCE_STATUS_ENABLED, ""),
 	)
 	if err != nil {
 		return nil, err

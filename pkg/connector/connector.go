@@ -73,7 +73,7 @@ func NewLambdaConnector(ctx context.Context, ac *cfg.Vultr, opts *cli.ConnectorO
 	if connectorOpts == nil {
 		connectorOpts = &cli.ConnectorOpts{}
 	}
-	syncACLs := connectorOpts.WillSyncResourceType(AclResourceTypeID)
+	syncACLs := connectorOpts.WillSyncResourceType(ACLResourceTypeID)
 
 	c, err := New(ctx, ac.BearerToken, syncACLs)
 	if err != nil {
