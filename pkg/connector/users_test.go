@@ -8,6 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/annotations"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/conductorone/baton-vultr/pkg/client"
 	"github.com/conductorone/baton-vultr/test"
@@ -66,6 +69,85 @@ func TestVultrClient_GetUsers(t *testing.T) {
 
 	if nextOptions == nil {
 		t.Fatal("Expected non-nil nextOptions")
+	}
+}
+
+// mockUserByIDClient returns a *client.VultrClient whose GetUserByID call
+// resolves to the single-user fixture (userSingleMock.json), regardless of
+// the ID passed in.
+func mockUserByIDClient(t *testing.T) *client.VultrClient {
+	t.Helper()
+
+	body, err := test.ReadFile("userSingleMock.json")
+	if err != nil {
+		t.Fatalf("Error reading body: %s", err)
+	}
+	mockResponse := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+	mockResponse.Header.Set("Content-Type", "application/json")
+
+	return test.NewTestClient(mockResponse, nil)
+}
+
+// TestUserBuilder_Grants_EmitsACLGrants verifies that userBuilder.Grants is
+// unconditional again: it always emits acl grants when called directly.
+// Gating now happens at the SDK-sync layer via the resource-type annotation
+// set on ResourceType() (see TestNewUserBuilder_ResourceType_Annotations*
+// below), not inside Grants() itself.
+func TestUserBuilder_Grants_EmitsACLGrants(t *testing.T) {
+	u := newUserBuilder(mockUserByIDClient(t), false)
+
+	res := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: userResourceType.Id,
+			Resource:     "1e5ab26c3423",
+		},
+	}
+
+	grants, _, err := u.Grants(context.Background(), res, rs.SyncOpAttrs{})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(grants) != 2 {
+		t.Fatalf("Expected 2 acl grants (manage_users, billing), got %d", len(grants))
+	}
+}
+
+// TestNewUserBuilder_ResourceType_Annotations_SyncACLs verifies that when acl
+// IS being synced (skipACLGrants=false), the user resource type is annotated
+// with SkipEntitlements only (users still have no entitlements of their own,
+// but their acl grants should still be emitted by the sync engine).
+func TestNewUserBuilder_ResourceType_Annotations_SyncACLs(t *testing.T) {
+	u := newUserBuilder(mockUserByIDClient(t), false)
+
+	rt := u.ResourceType(context.Background())
+	annos := annotations.Annotations(rt.GetAnnotations())
+
+	if !annos.Contains(&v2.SkipEntitlements{}) {
+		t.Fatalf("Expected SkipEntitlements annotation to be present")
+	}
+	if annos.Contains(&v2.SkipEntitlementsAndGrants{}) {
+		t.Fatalf("Expected SkipEntitlementsAndGrants annotation NOT to be present")
+	}
+}
+
+// TestNewUserBuilder_ResourceType_Annotations_SkipACLs verifies that when acl
+// is NOT being synced (skipACLGrants=true), the user resource type is
+// annotated with SkipEntitlementsAndGrants, so the SDK sync engine skips
+// calling Grants() entirely (the acl grants it would emit reference a
+// resource type that isn't part of the sync).
+func TestNewUserBuilder_ResourceType_Annotations_SkipACLs(t *testing.T) {
+	u := newUserBuilder(mockUserByIDClient(t), true)
+
+	rt := u.ResourceType(context.Background())
+	annos := annotations.Annotations(rt.GetAnnotations())
+
+	if !annos.Contains(&v2.SkipEntitlementsAndGrants{}) {
+		t.Fatalf("Expected SkipEntitlementsAndGrants annotation to be present")
 	}
 }
 

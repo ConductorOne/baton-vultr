@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-vultr/pkg/client"
+	"google.golang.org/protobuf/proto"
 )
 
 type userBuilder struct {
@@ -16,7 +18,7 @@ type userBuilder struct {
 }
 
 func (u *userBuilder) ResourceType(_ context.Context) *v2.ResourceType {
-	return userResourceType
+	return u.resourceType
 }
 
 // List returns all the users from the database as resource objects.
@@ -99,8 +101,6 @@ func (u *userBuilder) Grants(ctx context.Context, res *v2.Resource, _ rs.SyncOpA
 }
 
 func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
-	var userStatus = v2.UserTrait_Status_STATUS_ENABLED
-
 	profile := map[string]interface{}{
 		"user_id":   user.Id,
 		"user_name": user.Name,
@@ -110,8 +110,6 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 	displayName := user.Name
 
 	userTraits := []rs.UserTraitOption{
-		rs.WithUserProfile(profile),
-		rs.WithStatus(userStatus),
 		rs.WithUserLogin(displayName),
 		rs.WithEmail(user.Email, true),
 	}
@@ -121,6 +119,8 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 		userResourceType,
 		user.Id,
 		userTraits,
+		rs.WithResourceProfile(profile),
+		rs.WithResourceStatus(v2.Status_RESOURCE_STATUS_ENABLED, ""),
 	)
 	if err != nil {
 		return nil, err
@@ -129,9 +129,18 @@ func parseIntoUserResource(user *client.User) (*v2.Resource, error) {
 	return ret, nil
 }
 
-func newUserBuilder(c *client.VultrClient) *userBuilder {
+func newUserBuilder(c *client.VultrClient, skipACLGrants bool) *userBuilder {
+	resourceType := proto.Clone(userResourceType).(*v2.ResourceType)
+	userAnnos := annotations.Annotations(resourceType.GetAnnotations())
+	if skipACLGrants {
+		userAnnos.Update(&v2.SkipEntitlementsAndGrants{})
+	} else {
+		userAnnos.Update(&v2.SkipEntitlements{})
+	}
+	resourceType.Annotations = userAnnos
+
 	return &userBuilder{
-		resourceType: userResourceType,
+		resourceType: resourceType,
 		client:       c,
 	}
 }

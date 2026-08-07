@@ -1,0 +1,9 @@
+{
+  "user": {
+    "id": "1e5ab26c3423",
+    "name": "User_Root",
+    "email": "userroot@gmail.com",
+    "apiEnabled": true,
+    "acls": ["manage_users", "billing"]
+  }
+}
