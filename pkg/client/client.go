@@ -70,6 +70,7 @@ func (c *VultrClient) ListUsers(ctx context.Context, options PageOptions) ([]Use
 		return nil, "", nil, err
 	}
 
+	// WithPaginationData already failed the request if Vultr omitted meta, so this is safe.
 	return res.Result, res.Meta.Links.Next, annotation, nil
 }
 
@@ -124,7 +125,7 @@ func (c *VultrClient) getResourcesFromAPI(
 	res any,
 	reqOptions ...ReqOpt,
 ) (annotations.Annotations, error) {
-	_, annotation, err := c.doRequest(ctx, http.MethodGet, urlAddress, &res, reqOptions...)
+	_, annotation, err := c.doRequest(ctx, http.MethodGet, urlAddress, res, reqOptions...)
 
 	if err != nil {
 		return nil, err
@@ -176,8 +177,12 @@ func (c *VultrClient) doRequest(
 	switch method {
 	case http.MethodGet, http.MethodPut, http.MethodPost:
 		var doOptions []uhttp.DoOption
-		if res != nil {
-			doOptions = append(doOptions, uhttp.WithResponse(&res))
+		// A response type that reports its own pagination data gets checked for it, so a page
+		// arriving without a cursor fails here instead of silently ending the sync.
+		if paginated, ok := res.(uhttp.PaginatedResponse); ok {
+			doOptions = append(doOptions, uhttp.WithPaginationData(paginated))
+		} else if res != nil {
+			doOptions = append(doOptions, uhttp.WithResponse(res))
 		}
 		resp, err = c.wrapper.Do(req, doOptions...)
 		if resp != nil {
