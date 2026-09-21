@@ -177,12 +177,14 @@ func (c *VultrClient) doRequest(
 	switch method {
 	case http.MethodGet, http.MethodPut, http.MethodPost:
 		var doOptions []uhttp.DoOption
-		// A response type that reports its own pagination data gets checked for it, so a page
-		// arriving without a cursor fails here instead of silently ending the sync.
-		if paginated, ok := res.(uhttp.PaginatedResponse); ok {
-			doOptions = append(doOptions, uhttp.WithPaginationData(paginated))
-		} else if res != nil {
-			doOptions = append(doOptions, uhttp.WithResponse(res))
+		if res != nil {
+			// A response type that reports its own pagination data gets checked for it, so a
+			// page arriving without a cursor fails here instead of silently ending the sync.
+			if paginated, ok := res.(uhttp.PaginatedResponse); ok {
+				doOptions = append(doOptions, uhttp.WithPaginationData(paginated))
+			} else {
+				doOptions = append(doOptions, uhttp.WithResponse(res))
+			}
 		}
 		resp, err = c.wrapper.Do(req, doOptions...)
 		if resp != nil {
