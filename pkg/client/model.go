@@ -12,6 +12,14 @@ type UserResponse struct {
 	Meta   *PaginationMeta `json:"meta"`
 	Result []User          `json:"users"`
 }
+
+// HasPaginationData satisfies uhttp.PaginatedResponse. Vultr sends meta on every list
+// response and empties meta.links.next on the last page, so meta going missing means the
+// cursor was dropped - which would both end the sync early and nil-deref meta.links.next.
+func (r *UserResponse) HasPaginationData() bool {
+	return r.Meta != nil
+}
+
 type PaginationMeta struct {
 	Total int `json:"total"`
 	Links struct {
